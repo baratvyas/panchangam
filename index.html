@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lunar Calendar - Panchangam</title>
+    
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts: For multilingual display -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Telugu:wght@400;500;700&family=Noto+Serif:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f0f4f8; }
+        .dark body { background-color: #0d1117; }
+        .telugu { font-family: 'Noto Sans Telugu', sans-serif; }
+        .devanagari { font-family: 'Noto Serif', serif; }
+        .tab-btn { transition: all 0.3s ease; border-bottom: 2px solid transparent; }
+        .tab-btn.active { border-bottom-color: #4f46e5; color: #1f2937; }
+        .dark .tab-btn.active { border-bottom-color: #a5b4fc; color: #f9fafb; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .timing-details { font-size: 0.8rem; line-height: 1.2; color: #4a5568; }
+        .dark .timing-details { color: #a0aec0; }
+        .change-arrow { color: #4f46e5; }
+        .dark .change-arrow { color: #a5b4fc; }
+    </style>
+</head>
+<body class="dark:bg-gray-900">
+
+    <div class="min-h-screen flex items-center justify-center p-4">
+        <div class="w-full max-w-md mx-auto bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 md:p-8">
+            <header class="text-center mb-6">
+                <h1 class="text-3xl font-bold text-gray-800 dark:text-white devanagari">पञ्चाङ्गम्</h1>
+                <p id="location-info" class="text-sm text-gray-500 dark:text-gray-400 mt-1">Loading...</p>
+            </header>
+            
+            <div class="mb-6 border-b border-gray-200 dark:border-gray-700">
+                <nav class="flex -mb-px space-x-6" aria-label="Tabs">
+                    <button id="tab-en" class="tab-btn active py-3 px-1 text-lg font-medium text-gray-500 dark:text-gray-400">English</button>
+                    <button id="tab-devanagari" class="tab-btn py-3 px-1 text-lg font-medium text-gray-500 dark:text-gray-400 devanagari">देवनागरी</button>
+                    <button id="tab-telugu" class="tab-btn py-3 px-1 text-lg font-medium text-gray-500 dark:text-gray-400 telugu">తెలుగు</button>
+                </nav>
+            </div>
+
+            <main>
+                <div id="content-en" class="tab-content active"><ul id="panchangam-list-en" class="space-y-4 text-lg"></ul></div>
+                <div id="content-devanagari" class="tab-content"><ul id="panchangam-list-devanagari" class="space-y-4 text-lg devanagari"></ul></div>
+                <div id="content-telugu" class="tab-content"><ul id="panchangam-list-telugu" class="space-y-4 text-lg telugu"></ul></div>
+            </main>
+        </div>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', async () => {
+
+    // --- Multilingual Data Dictionaries (JavaScript Objects) ---
+    const LABELS = {
+        samvatsarah: {"en": "Samvatsaraḥ", "devanagari": "संवत्सरः", "telugu": "సంవత్సరం"},
+        ayanam:      {"en": "Ayanam", "devanagari": "अयनम्", "telugu": "ఆయనం"},
+        rituh:       {"en": "Ṛtuḥ", "devanagari": "ऋतुः", "telugu": "ఋతువు"},
+        masah:       {"en": "Māsaḥ", "devanagari": "मासः", "telugu": "మాసం"},
+        pakshah:     {"en": "Pakṣaḥ", "devanagari": "पक्षः", "telugu": "పక్షం"},
+        vasarah:     {"en": "Vāsaraḥ", "devanagari": "वासरः", "telugu": "వారం"},
+        tithih:      {"en": "Tithiḥ", "devanagari": "तिथिः", "telugu": "తిథి"},
+        nakshatram:  {"en": "Nakṣatram", "devanagari": "नक्षत्रम्", "telugu": "నక్షత్రం"},
+        yogah:       {"en": "Yogaḥ", "devanagari": "योगः", "telugu": "యోగం"},
+        karanam:     {"en": "Karaṇam", "devanagari": "करणम्", "telugu": "కరణం"},
+    };
+    const SAMVATSARA_NAMES = [{"en": "Prabhava", "devanagari": "प्रभव", "telugu": "ప్రభవ"}, {"en": "Vibhava", "devanagari": "विभव", "telugu": "విభవ"}, {"en": "Shukla", "devanagari": "शुक्ल", "telugu": "శుక్ల"}, {"en": "Pramoduta", "devanagari": "प्रमोदूत", "telugu": "ప్రమోదూత"}, {"en": "Prajothpatti", "devanagari": "प्रजोत्पत्ति", "telugu": "ప్రజోత్పత్తి"}, {"en": "Angirasa", "devanagari": "अङ्गिरस", "telugu": "అంగీరస"}, {"en": "Shrimukha", "devanagari": "श्रीमुख", "telugu": "శ్రీముఖ"}, {"en": "Bhava", "devanagari": "भव", "telugu": "భవ"}, {"en": "Yuva", "devanagari": "युव", "telugu": "యువ"}, {"en": "Dhatri", "devanagari": "धात्री", "telugu": "ధాత్రి"}, {"en": "Ishwara", "devanagari": "ईश्वर", "telugu": "ఈశ్వర"}, {"en": "Bahudhanya", "devanagari": "बहुधान्य", "telugu": "బహుధాన్య"}, {"en": "Pramathi", "devanagari": "प्रमाथी", "telugu": "ప్రమాథి"}, {"en": "Vikrama", "devanagari": "विक्रम", "telugu": "విక్రమ"}, {"en": "Vishu", "devanagari": "विषु", "telugu": "విషు"}, {"en": "Chitrabhanu", "devanagari": "चित्रभानु", "telugu": "చిత్రభాను"}, {"en": "Swabhanu", "devanagari": "स्वभानु", "telugu": "స్వభాను"}, {"en": "Tarana", "devanagari": "तारण", "telugu": "తారణ"}, {"en": "Parthiva", "devanagari": "पार्थिव", "telugu": "పార్థివ"}, {"en": "Vyaya", "devanagari": "व्यय", "telugu": "వ్యయ"}, {"en": "Sarvajit", "devanagari": "सर्वजित्", "telugu": "సర్వజిత్"}, {"en": "Sarvadhari", "devanagari": "सर्वधारी", "telugu": "సర్వధారి"}, {"en": "Virodhi", "devanagari": "विरोधी", "telugu": "విరోధి"}, {"en": "Vikriti", "devanagari": "विकृति", "telugu": "వికృతి"}, {"en": "Khara", "devanagari": "खर", "telugu": "ఖర"}, {"en": "Nandana", "devanagari": "नन्दन", "telugu": "నందన"}, {"en": "Vijaya", "devanagari": "विजय", "telugu": "విజయ"}, {"en": "Jaya", "devanagari": "जय", "telugu": "జయ"}, {"en": "Manmatha", "devanagari": "मन्मथ", "telugu": "మన్మథ"}, {"en": "Durmukhi", "devanagari": "दुर्मुखी", "telugu": "దుర్ముఖి"}, {"en": "Hevilambi", "devanagari": "हेविलम्बी", "telugu": "హేవిలంబి"}, {"en": "Vilambi", "devanagari": "विलम्बी", "telugu": "విలంబి"}, {"en": "Vikari", "devanagari": "विकारी", "telugu": "వికారి"}, {"en": "Sharvari", "devanagari": "शर्वरी", "telugu": "శార్వరి"}, {"en": "Plava", "devanagari": "प्लव", "telugu": "ప్లవ"}, {"en": "Shubhakrita", "devanagari": "शुभकृत", "telugu": "శుభకృత"}, {"en": "Shobhakrita", "devanagari": "शोभकृत", "telugu": "శోభకృత"}, {"en": "Krodhi", "devanagari": "क्रोधी", "telugu": "క్రోధి"}, {"en": "Viśvāvasu", "devanagari": "विश्ववसु", "telugu": "విశ్వావసు"}, {"en": "Parābhava", "devanagari": "पराभव", "telugu": "పరాభవ"}, {"en": "Plavanga", "devanagari": "प्लवङ्ग", "telugu": "ప్లవంగ"}, {"en": "Keelaka", "devanagari": "कीलक", "telugu": "కీలక"}, {"en": "Saumya", "devanagari": "सौम्य", "telugu": "సౌమ్య"}, {"en": "Sadharana", "devanagari": "साधारण", "telugu": "సాధారణ"}, {"en": "Virodhikrita", "devanagari": "विरोधकृत", "telugu": "విరోధికృత"}, {"en": "Paridhavi", "devanagari": "परिधावी", "telugu": "పరిధావి"}, {"en": "Pramadicha", "devanagari": "प्रमादीच", "telugu": "ప్రమాది"}, {"en": "Ananda", "devanagari": "आनन्द", "telugu": "ఆనంద"}, {"en": "Rakshasa", "devanagari": "राक्षस", "telugu": "రాక్షస"}, {"en": "Nala", "devanagari": "नल", "telugu": "నల"}, {"en": "Pingala", "devanagari": "पिङ्गल", "telugu": "పింగళ"}, {"en": "Kalayukta", "devanagari": "कालयुक्त", "telugu": "కాళయుక్త"}, {"en": "Siddharthi", "devanagari": "सिद्धार्थी", "telugu": "సిద్ధార్థి"}, {"en": "Raudri", "devanagari": "रौद्री", "telugu": "రౌద్రి"}, {"en": "Durmati", "devanagari": "दुर्मति", "telugu": "దుర్మతి"}, {"en": "Dundubhi", "devanagari": "दुन्दुभी", "telugu": "దుందుభి"}, {"en": "Rudhirodgari", "devanagari": "रुधिरोद्गारी", "telugu": "రుధిరోద్గారి"}, {"en": "Raktakshi", "devanagari": "रक्ताक्षी", "telugu": "రక్తాక్షి"}, {"en": "Krodhana", "devanagari": "क्रोधन", "telugu": "క్రోధన"}, {"en": "Kshaya", "devanagari": "क्षय", "telugu": "క్షయ"}];
+    const AYANAM_NAMES = { "Uttarāyaṇam": {"en": "Uttarāyaṇam", "devanagari": "उत्तरायणम्", "telugu": "ఉత్తరాయణం"}, "Dakṣiṇāyanam": {"en": "Dakṣiṇāyanam", "devanagari": "दक्षिणायनम्", "telugu": "దక్షిణాయనం"} };
+    const RITU_NAMES = { "Vasanta": {"en": "Vasanta", "devanagari": "वसन्त", "telugu": "వసంత"}, "Grīṣma": {"en": "Grīṣma", "devanagari": "ग्रीष्म", "telugu": "గ్రీష్మ"}, "Varṣā": {"en": "Varṣā", "devanagari": "वर्षा", "telugu": "వర్షా"}, "Śarad": {"en": "Śarad", "devanagari": "शरद्", "telugu": "శరద్"}, "Hemanta": {"en": "Hemanta", "devanagari": "हेमन्त", "telugu": "హేమంత"}, "Śiśira": {"en": "Śiśira", "devanagari": "शिशिर", "telugu": "శిశిర"} };
+    const MASA_NAMES = { "Caitra": {"en": "Caitra", "devanagari": "चैत्र", "telugu": "చైత్ర"}, "Vaiśākha": {"en": "Vaiśākha", "devanagari": "वैशाख", "telugu": "వైశాఖ"}, "Jyeṣṭha": {"en": "Jyeṣṭha", "devanagari": "ज्येष्ठ", "telugu": "జ్యేష్ఠ"}, "Āṣāḍha": {"en": "Āṣāḍha", "devanagari": "आषाढ", "telugu": "ఆషాఢ"}, "Śrāvaṇa": {"en": "Śrāvaṇa", "devanagari": "श्रावण", "telugu": "శ్రావణ"}, "Bhādrapada": {"en": "Bhādrapada", "devanagari": "भाद्रपद", "telugu": "భాద్రపద"}, "Āśvina": {"en": "Āśvina", "devanagari": "आश्विन", "telugu": "ఆశ్వయుజ"}, "Kārtika": {"en": "Kārtika", "devanagari": "कार्तिक", "telugu": "కార్తీక"}, "Mārgaśīrṣa": {"en": "Mārgaśīrṣa", "devanagari": "मार्गशीर्ष", "telugu": "మార్గశిర"}, "Pauṣa": {"en": "Pauṣa", "devanagari": "पौष", "telugu": "పుష్య"}, "Māgha": {"en": "Māgha", "devanagari": "माघ", "telugu": "మాఘ"}, "Phālguna": {"en": "Phālguna", "devanagari": "फाल्गुन", "telugu": "ఫాల్గుణ"} };
+    const LUNAR_MONTHS_2025 = [[new Date('2025-01-29T00:00:00Z'), "Māgha"], [new Date('2025-02-28T00:00:00Z'), "Phālguna"], [new Date('2025-03-29T00:00:00Z'), "Caitra"], [new Date('2025-04-28T00:00:00Z'), "Vaiśākha"], [new Date('2025-05-27T00:00:00Z'), "Jyeṣṭha"], [new Date('2025-06-25T00:00:00Z'), "Āṣāḍha"], [new Date('2025-07-25T00:00:00Z'), "Śrāvaṇa"], [new Date('2025-08-23T00:00:00Z'), "Bhādrapada"], [new Date('2025-09-22T00:00:00Z'), "Āśvina"], [new Date('2025-10-21T00:00:00Z'), "Kārtika"], [new Date('2025-11-20T00:00:00Z'), "Mārgaśīrṣa"], [new Date('2025-12-20T00:00:00Z'), "Pauṣa"], [new Date('2026-01-18T00:00:00Z'), "Māgha"]];
+    const PAKSHA_NAMES = { "Śukla Pakṣa": {"en": "Śukla Pakṣa", "devanagari": "शुक्ल पक्ष", "telugu": "శుక్ల పక్షం"}, "Kṛṣṇa Pakṣa": {"en": "Kṛṣṇa Pakṣa", "devanagari": "कृष्ण पक्ष", "telugu": "కృష్ణ పక్షం"} };
+    const TITHI_NAMES = [{"en": "Prathama", "devanagari": "प्रथमा", "telugu": "ప్రథమ"}, {"en": "Dvitīya", "devanagari": "द्वितीया", "telugu": "ద్వితీయ"}, {"en": "Tṛtīya", "devanagari": "तृतीया", "telugu": "తృతీయ"}, {"en": "Caturthī", "devanagari": "चतुर्थी", "telugu": "చతుర్థి"}, {"en": "Pañcamī", "devanagari": "पञ्चमी", "telugu": "పంచమి"}, {"en": "Ṣaṣṭhī", "devanagari": "षष्ठी", "telugu": "షష్ఠి"}, {"en": "Saptamī", "devanagari": "सप्तमी", "telugu": "సప్తమి"}, {"en": "Aṣṭamī", "devanagari": "अष्टमी", "telugu": "అష్టమి"}, {"en": "Navamī", "devanagari": "नवमी", "telugu": "నవమి"}, {"en": "Daśamī", "devanagari": "दशमी", "telugu": "దశమి"}, {"en": "Ekādaśī", "devanagari": "एकादशी", "telugu": "ఏకాదశి"}, {"en": "Dvādaśī", "devanagari": "द्वादशी", "telugu": "ద్వాదశి"}, {"en": "Trayodaśī", "devanagari": "त्रयोदशी", "telugu": "త్రయోదశి"}, {"en": "Caturdaśī", "devanagari": "चतुर्दशी", "telugu": "చతుర్దశి"}, {"en": "Pūrṇimā", "devanagari": "पूर्णिमा", "telugu": "పౌర్ణమి"}, {"en": "Prathama", "devanagari": "प्रथमा", "telugu": "ప్రథమ"}, {"en": "Dvitīya", "devanagari": "द्वितीया", "telugu": "ద్వితీయ"}, {"en": "Tṛtīya", "devanagari": "तृतीया", "telugu": "తృతీయ"}, {"en": "Caturthī", "devanagari": "चतुर्थी", "telugu": "చతుర్థి"}, {"en": "Pañcamī", "devanagari": "पञ्चमी", "telugu": "పంచమి"}, {"en": "Ṣaṣṭhī", "devanagari": "षष्ठी", "telugu": "షష్ఠి"}, {"en": "Saptamī", "devanagari": "सप्तमी", "telugu": "సప్తమి"}, {"en": "Aṣṭamī", "devanagari": "अष्टमी", "telugu": "అష్టమి"}, {"en": "Navamī", "devanagari": "नवमी", "telugu": "నవమి"}, {"en": "Daśamī", "devanagari": "दशमी", "telugu": "దశమి"}, {"en": "Ekādaśī", "devanagari": "एकादशी", "telugu": "ఏకాదశి"}, {"en": "Dvādaśī", "devanagari": "द्वादशी", "telugu": "ద్వాదశి"}, {"en": "Trayodaśī", "devanagari": "त्रयोदशी", "telugu": "త్రయోదశి"}, {"en": "Caturdaśī", "devanagari": "चतुर्दशी", "telugu": "చతుర్దశి"}, {"en": "Amāvāsyā", "devanagari": "अमावस्या", "telugu": "అమావాస్య"}];
+    const VASARA_NAMES = [{"en": "Bhānuvāsaraḥ", "devanagari": "भानुवासरः", "telugu": "ఆదివారం"}, {"en": "Induvāsaraḥ", "devanagari": "इन्दुवासरः", "telugu": "సోమవారం"}, {"en": "Bhaumavāsaraḥ", "devanagari": "भौमवासरः", "telugu": "మంగళవారం"}, {"en": "Saumyavāsaraḥ", "devanagari": "सौम्यवासरः", "telugu": "బుధవారం"}, {"en": "Guruvāsaraḥ", "devanagari": "गुरुवासरः", "telugu": "గురువారం"}, {"en": "Śukravāsaraḥ", "devanagari": "शुक्रवासरः", "telugu": "శుక్రవారం"}, {"en": "Śanivāsaraḥ", "devanagari": "शनिवासरः", "telugu": "శనివారం"}];
+    const NAKSHATRA_NAMES = [{"en": "Aśvinī", "devanagari": "अश्विनी", "telugu": "అశ్విని"}, {"en": "Bharaṇī", "devanagari": "भरणी", "telugu": "భరణి"}, {"en": "Kṛttikā", "devanagari": "कृत्तिका", "telugu": "కృత్తిక"}, {"en": "Rohiṇī", "devanagari": "रोहिणी", "telugu": "రోహిణి"}, {"en": "Mṛgaśīrṣa", "devanagari": "मृगशीर्ष", "telugu": "మృగశిర"}, {"en": "Ārdrā", "devanagari": "आर्द्रा", "telugu": "ఆర్ద్ర"}, {"en": "Punarvasu", "devanagari": "पुनर्वसु", "telugu": "పునర్వసు"}, {"en": "Puṣya", "devanagari": "पुष्य", "telugu": "పుష్యమి"}, {"en": "Āśleṣā", "devanagari": "आश्लेषा", "telugu": "ఆశ్లేష"}, {"en": "Maghā", "devanagari": "मघा", "telugu": "మఖ"}, {"en": "Pūrva Phalguṇī", "devanagari": "पूर्व फाल्गुनी", "telugu": "పూర్వ ఫల్గుణి"}, {"en": "Uttara Phalguṇī", "devanagari": "उत्तर फाल्गुनी", "telugu": "ఉత్తర ఫల్గుణి"}, {"en": "Hasta", "devanagari": "हस्त", "telugu": "హస్త"}, {"en": "Citrā", "devanagari": "चित्रा", "telugu": "చిత్త"}, {"en": "Svāti", "devanagari": "स्वाति", "telugu": "స్వాతి"}, {"en": "Viśākhā", "devanagari": "विशाखा", "telugu": "విశాఖ"}, {"en": "Anurādhā", "devanagari": "अनुराधा", "telugu": "అనురాధ"}, {"en": "Jyeṣṭhā", "devanagari": "ज्येष्ठा", "telugu": "జ్యేష్ఠ"}, {"en": "Mūlā", "devanagari": "मूल", "telugu": "మూల"}, {"en": "Pūrvāṣāḍhā", "devanagari": "पूर्वाषाढा", "telugu": "పూర్వాషాఢ"}, {"en": "Uttarāṣāḍhā", "devanagari": "उत्तराषाढा", "telugu": "ఉత్తరాషాఢ"}, {"en": "Śravaṇā", "devanagari": "श्रवण", "telugu": "శ్రవణ"}, {"en": "Dhaniṣṭhā", "devanagari": "धनिष्ठा", "telugu": "ధనిష్ఠ"}, {"en": "Śatabhiṣā", "devanagari": "शतभिषा", "telugu": "శతభిష"}, {"en": "Pūrva Bhādrapadā", "devanagari": "पूर्व भाद्रपदा", "telugu": "పూర్వ భాద్రపద"}, {"en": "Uttara Bhādrapadā", "devanagari": "उत्तर भाद्रपदा", "telugu": "ఉత్తర భాద్రపద"}, {"en": "Revatī", "devanagari": "रेवती", "telugu": "రేవతి"}];
+    const YOGA_NAMES = [{"en": "Viṣkambha", "devanagari": "विष्कम्भ", "telugu": "విష్కంభ"}, {"en": "Prīti", "devanagari": "प्रीति", "telugu": "ప్రీతి"}, {"en": "Āyuṣmān", "devanagari": "आयुष्मान्", "telugu": "ఆయుష్మాన్"}, {"en": "Saubhāgya", "devanagari": "सौभाग्य", "telugu": "సౌభాగ్య"}, {"en": "Śobhana", "devanagari": "शोभन", "telugu": "శోభన"}, {"en": "Atigaṇḍa", "devanagari": "अतिगण्ड", "telugu": "అతిగండ"}, {"en": "Sukarman", "devanagari": "सुक्रमन्", "telugu": "సుకర్మ"}, {"en": "Dhṛti", "devanagari": "धृति", "telugu": "ధృతి"}, {"en": "Śūla", "devanagari": "शूल", "telugu": "శూల"}, {"en": "Gaṇḍa", "devanagari": "गण्ड", "telugu": "గండ"}, {"en": "Vṛddhi", "devanagari": "वृद्धि", "telugu": "వృద్ధి"}, {"en": "Dhruva", "devanagari": "ध्रुव", "telugu": "ధ్రువ"}, {"en": "Vyāghāta", "devanagari": "व्याघात", "telugu": "వ్యాఘాత"}, {"en": "Harṣaṇa", "devanagari": "हर्षण", "telugu": "హర్షణ"}, {"en": "Vajra", "devanagari": "वज्र", "telugu": "వజ్ర"}, {"en": "Siddhi", "devanagari": "सिद्धि", "telugu": "సిద్ధి"}, {"en": "Vyatīpāta", "devanagari": "व्यतीपात", "telugu": "వ్యతీపాత"}, {"en": "Varīyān", "devanagari": "वरीयान्", "telugu": "వరీయాన్"}, {"en": "Parigha", "devanagari": "परिघ", "telugu": "పరిఘ"}, {"en": "Śiva", "devanagari": "शिव", "telugu": "శివ"}, {"en": "Siddha", "devanagari": "सिद्ध", "telugu": "సిద్ధ"}, {"en": "Sādhya", "devanagari": "साध्य", "telugu": "సాధ్య"}, {"en": "Śubha", "devanagari": "शुभ", "telugu": "శుభ"}, {"en": "Śukla", "devanagari": "शुक्ल", "telugu": "శుక్ల"}, {"en": "Brahman", "devanagari": "ब्रह्म", "telugu": "బ్రహ్మ"}, {"en": "Māhendra", "devanagari": "माहेन्द्र", "telugu": "మహేంద్ర"}, {"en": "Vaidhṛti", "devanagari": "वैधृति", "telugu": "వైధృతి"}];
+    const KARANA_NAMES = [{"en": "Bava", "devanagari": "बव", "telugu": "బవ"}, {"en": "Bālava", "devanagari": "बालव", "telugu": "బాలవ"}, {"en": "Kaulava", "devanagari": "कौलव", "telugu": "కౌలవ"}, {"en": "Taitila", "devanagari": "तैतिल", "telugu": "తైతిల"}, {"en": "Garajā", "devanagari": "गरज", "telugu": "గరజ"}, {"en": "Vaṇija", "devanagari": "वणिज", "telugu": "వణిజ"}, {"en": "Viṣṭi", "devanagari": "विष्टि", "telugu": "విష్టి"}, {"en": "Śakuni", "devanagari": "शकुनि", "telugu": "శకుని"}, {"en": "Catuṣpāda", "devanagari": "चतुष्पाद", "telugu": "చతుష్పాద్"}, {"en": "Nāga", "devanagari": "नाग", "telugu": "నాగ"}, {"en": "Kiṃstughna", "devanagari": "किंस्तुघ्न", "telugu": "కింస్తుఘ్న"}];
+
+    // --- Dynamic Calculation Engine (Client-Side) ---
+    const getApproxLongitude = (date) => {
+        const epoch = new Date('2025-01-01T00:00:00Z');
+        const daysSinceEpoch = (date.getTime() - epoch.getTime()) / (1000 * 60 * 60 * 24);
+        const sunLongitude = (280.46 + 0.98564736 * daysSinceEpoch) % 360;
+        const moonLongitude = (218.32 + 13.176396 * daysSinceEpoch) % 360;
+        return { sun: sunLongitude, moon: moonLongitude };
+    };
+
+    const getSamvatsara = (year) => SAMVATSARA_NAMES[(year - 1987) % 60];
+    const getAyanam = (date) => AYANAM_NAMES[(new Date(date.getFullYear(), 5, 21) > date) ? "Uttarāyaṇam" : "Dakṣiṇāyanam"];
+    const getRitu = (date) => {
+        const month = date.getMonth() + 1;
+        if (month >= 3 && month <= 4) return RITU_NAMES["Vasanta"];
+        if (month >= 5 && month <= 6) return RITU_NAMES["Grīṣma"];
+        if (month >= 7 && month <= 8) return RITU_NAMES["Varṣā"];
+        if (month >= 9 && month <= 10) return RITU_NAMES["Śarad"];
+        if (month >= 11 && month <= 12) return RITU_NAMES["Hemanta"];
+        return RITU_NAMES["Śiśira"];
+    };
+    const getMasaAndPaksha = (date) => {
+        let masa = null, paksha = null;
+        const todayUTC = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
+        for (let i = 0; i < LUNAR_MONTHS_2025.length - 1; i++) {
+            const [amavasya_start, month_name_en] = LUNAR_MONTHS_2025[i];
+            const [amavasya_end] = LUNAR_MONTHS_2025[i+1];
+            if (todayUTC >= amavasya_start.getTime() && todayUTC < amavasya_end.getTime()) {
+                masa = MASA_NAMES[month_name_en];
+                const purnima_date_ms = amavasya_start.getTime() + (amavasya_end.getTime() - amavasya_start.getTime()) / 2;
+                paksha = (todayUTC < purnima_date_ms) ? PAKSHA_NAMES["Śukla Pakṣa"] : PAKSHA_NAMES["Kṛṣṇa Pakṣa"];
+                break;
+            }
+        }
+        return { masa, paksha };
+    };
+
+    const calculateTithiDetails = (date) => {
+        const { sun, moon } = getApproxLongitude(date);
+        let diff = moon - sun;
+        if (diff < 0) diff += 360;
+        const tithiNumber = Math.floor(diff / 12);
+        const degreesIntoTithi = diff % 12;
+        const degreesLeft = 12 - degreesIntoTithi;
+        const hoursToEnd = (degreesLeft / 0.549) ; // Moon's relative speed per hour
+        const endTime = new Date(date.getTime() + hoursToEnd * 3600 * 1000);
+        return {
+            current: TITHI_NAMES[tithiNumber],
+            next: TITHI_NAMES[(tithiNumber + 1) % 30],
+            endTime: endTime,
+            tithiNumber: tithiNumber,
+            degreesIntoTithi: degreesIntoTithi
+        };
+    };
+
+    const calculateNakshatramDetails = (date) => {
+        const { moon } = getApproxLongitude(date);
+        const nakshatraDivision = 360 / 27;
+        const nakshatraNumber = Math.floor(moon / nakshatraDivision);
+        const degreesIntoNakshatra = moon % nakshatraDivision;
+        const degreesLeft = nakshatraDivision - degreesIntoNakshatra;
+        const hoursToEnd = (degreesLeft / 0.549);
+        const endTime = new Date(date.getTime() + hoursToEnd * 3600 * 1000);
+        return {
+            current: NAKSHATRA_NAMES[nakshatraNumber],
+            next: NAKSHATRA_NAMES[(nakshatraNumber + 1) % 27],
+            endTime: endTime
+        };
+    };
+
+    const calculateYogaDetails = (date) => {
+        const { sun, moon } = getApproxLongitude(date);
+        const totalLongitude = sun + moon;
+        const yogaDivision = 360 / 27;
+        const yogaNumber = Math.floor(totalLongitude / yogaDivision) % 27;
+        const degreesIntoYoga = totalLongitude % yogaDivision;
+        const degreesLeft = yogaDivision - degreesIntoYoga;
+        // Combined speed of Sun and Moon is approx. 14.16 deg/day
+        const hoursToEnd = (degreesLeft / 14.16) * 24;
+        const endTime = new Date(date.getTime() + hoursToEnd * 3600 * 1000);
+        return {
+            current: YOGA_NAMES[yogaNumber],
+            next: YOGA_NAMES[(yogaNumber + 1) % 27],
+            endTime: endTime
+        };
+    };
+
+    const calculateKaranamDetails = (tithiInfo) => {
+        const { tithiNumber, degreesIntoTithi, endTime } = tithiInfo;
+        const halfTithi = degreesIntoTithi < 6 ? 0 : 1; // 0 for first half, 1 for second
+        
+        let karanaNumber;
+        // Handle fixed karanas
+        if (tithiNumber === 29 && halfTithi === 0) karanaNumber = 8; // Chatushpada
+        else if (tithiNumber === 29 && halfTithi === 1) karanaNumber = 9; // Naga
+        else if (tithiNumber === 0 && halfTithi === 0) karanaNumber = 10; // Kimstughna
+        else if (tithiNumber === 28 && halfTithi === 1) karanaNumber = 7; // Shakuni
+        else {
+            // Logic for the 7 repeating karanas
+            const karanasInTithi = (tithiNumber * 2) + halfTithi;
+            karanaNumber = (karanasInTithi - 1) % 7; // Cycle through Bava..Vishti
+        }
+        
+        const nextKaranaNumber = (karanaNumber + 1) % 11; // Simple increment for next
+        
+        // Simplified end time calculation
+        const karanaEndTime = new Date(endTime.getTime() - (halfTithi === 0 ? (endTime - new Date()) / 2 : 0));
+        
+        return {
+            current: KARANA_NAMES[karanaNumber],
+            next: KARANA_NAMES[nextKaranaNumber],
+            endTime: karanaEndTime
+        };
+    };
+    
+
+    // --- Main Rendering Function ---
+    function renderPanchangam() {
+        const location = "Dublin";
+        const timeZone = "Europe/Dublin";
+        const today = new Date(new Date().toLocaleString("en-US", { timeZone }));
+
+        document.getElementById('location-info').textContent = `${today.toLocaleDateString('en-US', {dateStyle: 'full'})} - ${location}`;
+        
+        const { masa, paksha } = getMasaAndPaksha(today);
+        const tithiInfo = calculateTithiDetails(today);
+        const nakshatramInfo = calculateNakshatramDetails(today);
+        const yogaInfo = calculateYogaDetails(today);
+        const karanaInfo = calculateKaranamDetails(tithiInfo);
+        
+        const panchangamData = {
+            samvatsarah: { label: LABELS.samvatsarah, value: getSamvatsara(today.getFullYear()) },
+            ayanam: { label: LABELS.ayanam, value: getAyanam(today) },
+            rituh: { label: LABELS.rituh, value: getRitu(today) },
+            masah: { label: LABELS.masah, value: masa },
+            pakshah: { label: LABELS.pakshah, value: paksha },
+            vasarah: { label: LABELS.vasarah, value: VASARA_NAMES[today.getDay()] },
+            tithih: { label: LABELS.tithih, value: tithiInfo },
+            nakshatram: { label: LABELS.nakshatram, value: nakshatramInfo },
+            yogah: { label: LABELS.yogah, value: yogaInfo },
+            karanam: { label: LABELS.karanam, value: karanaInfo }
+        };
+
+        const languages = ['en', 'devanagari', 'telugu'];
+        languages.forEach(lang => {
+            const listElement = document.getElementById(`panchangam-list-${lang}`);
+            listElement.innerHTML = ''; 
+
+            for (const key in panchangamData) {
+                const item = panchangamData[key];
+                if (!item.value) continue;
+                
+                const li = document.createElement('li');
+                li.className = 'flex justify-between items-start';
+                let valueHTML = '';
+
+                if (item.value.hasOwnProperty('current')) { // For items with timing
+                    const timeFormat = new Intl.DateTimeFormat('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+                    const endTimeStr = timeFormat.format(item.value.endTime);
+                    const teluguTimeStr = endTimeStr.replace("AM", "ఉదయం").replace("PM", "సాయంత్రం");
+                    let timeString = (lang === 'en') ? `(Until ${endTimeStr})` : (lang === 'telugu' ? `(${teluguTimeStr} వరకు)` : `(${endTimeStr} तक)`);
+                    valueHTML = `
+                        <div class="text-right">
+                            <span class="font-medium text-gray-900 dark:text-white">${item.value.current[lang]}</span>
+                            <div class="timing-details">${timeString}</div>
+                            <div class="font-medium text-gray-900 dark:text-white">
+                                <span class="change-arrow">→</span> ${item.value.next[lang]}
+                            </div>
+                        </div>`;
+                } else { // For simple key-value pairs
+                     valueHTML = `<span class="font-medium text-gray-900 dark:text-white text-right">${item.value[lang]}</span>`;
+                }
+                
+                li.innerHTML = `<span class="font-semibold text-gray-600 dark:text-gray-300 pt-1">${item.label[lang]}</span> ${valueHTML}`;
+                listElement.appendChild(li);
+            }
+        });
+    }
+
+    // --- Tab Switching Logic ---
+    const tabButtons = document.querySelectorAll('.tab-btn');
+    const tabContents = document.querySelectorAll('.tab-content');
+    tabButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            tabContents.forEach(content => content.classList.remove('active'));
+            button.classList.add('active');
+            document.getElementById(button.id.replace('tab-', 'content-')).classList.add('active');
+        });
+    });
+
+    renderPanchangam();
+});
+</script>
+
+</body>
+</html>
